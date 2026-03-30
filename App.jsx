@@ -1559,9 +1559,562 @@ function MoreTab({workouts,cardioLog,bbLog,prs,bodyLog,checkIns,injuries,setTab}
 }
 
 // ─── BOTTOM NAV ───────────────────────────────────────────────────────────────
+// ─── PROGRAM DATA ─────────────────────────────────────────────────────────────
+const SESSION_TYPES={
+  "Lower A":{color:"#ca8a04",icon:"⚡",tag:"Sprint · Squat PAP · Vertical"},
+  "Lower B":{color:"#f97316",icon:"🚀",tag:"Sprint · Hip PAP · Horizontal"},
+  "Upper A":{color:"#0ea5e9",icon:"💪",tag:"Pull · Push · Core"},
+  "Upper B":{color:"#16a34a",icon:"🏀",tag:"Pull · Push · Athletic"},
+  "Pickup":{color:"#dc2626",icon:"🏀",tag:"Basketball"},
+  "Rest":{color:"#71717a",icon:"😴",tag:"Recovery"},
+  "Skill Work":{color:"#7c3aed",icon:"🎯",tag:"Shooting / Drills"},
+};
+
+const INTENSITY_TABLE=[
+  {week:1,phase:"Eccentric",pct:"65%",reps:"5×6",tempo:"5s down / 1s pause / explode",plyoPct:"80%",color:"#0ea5e9"},
+  {week:2,phase:"Eccentric",pct:"70%",reps:"4×6",tempo:"4s down / 1s pause / explode",plyoPct:"80%",color:"#0ea5e9"},
+  {week:3,phase:"Eccentric",pct:"75%",reps:"4×5",tempo:"3s down / 1s pause / explode",plyoPct:"85%",color:"#0ea5e9"},
+  {week:4,phase:"Isometric",pct:"75%",reps:"4×5",tempo:"1s down / 3s pause / explode",plyoPct:"85%",color:"#ca8a04"},
+  {week:5,phase:"Isometric",pct:"80%",reps:"4×4",tempo:"1s down / 3s pause / explode",plyoPct:"90%",color:"#ca8a04"},
+  {week:6,phase:"Isometric",pct:"85%",reps:"3×4",tempo:"1s down / 3s pause / explode",plyoPct:"90%",color:"#ca8a04"},
+  {week:7,phase:"Concentric",pct:"85%",reps:"4×4",tempo:"Normal / explode fast",plyoPct:"95%",color:"#f97316"},
+  {week:8,phase:"Concentric",pct:"90%",reps:"4×3",tempo:"Normal / max intent",plyoPct:"100%",color:"#f97316"},
+  {week:9,phase:"Concentric",pct:"95%",reps:"3×3",tempo:"Normal / max intent",plyoPct:"100%",color:"#f97316"},
+  {week:10,phase:"Deload",pct:"60%",reps:"3×5",tempo:"Normal",plyoPct:"70%",color:"#7c3aed"},
+  {week:11,phase:"Peak",pct:"90%",reps:"3×3",tempo:"Max intent",plyoPct:"100%",color:"#dc2626"},
+  {week:12,phase:"Peak / Test",pct:"100%",reps:"1–3 RM",tempo:"Max intent — PR day",plyoPct:"MAX",color:"#dc2626"},
+];
+
+const PROGRAM_DAYS={
+  "Lower A":{
+    color:"#ca8a04",icon:"⚡",est:"40 min",
+    sections:[
+      {title:"ACTIVATION + NEURAL PRIMING",color:"#71717a",items:[
+        {name:"90/90 Hip Switches",sets:"2",reps:"8/side",note:"Hip IR/ER prep. Non-negotiable.",restSecs:30},
+        {name:"Isometric Squat Hold — Max Push",sets:"3",reps:"5s hold",note:"90° bend. Push floor as hard as possible. Primes motor unit recruitment.",restSecs:30},
+        {name:"Ankle Pogos",sets:"2",reps:"20s",note:"Bilateral fast. Tendon spring primer.",restSecs:20},
+        {name:"Banded Ankle Pogos",sets:"2",reps:"20s",note:"Band anchored behind hips. Forces higher CNS recruitment than free pogos.",restSecs:20},
+      ]},
+      {title:"SPRINT BLOCK",color:"#dc2626",items:[
+        {name:"Acceleration Starts 10m",sets:"8",reps:"10m",note:"3-point stance. Drive phase only. Max effort. 80m total.",restSecs:60},
+      ]},
+      {title:"PAP COMPLEX A — SQUAT → DEPTH DROP",color:"#f97316",items:[
+        {name:"Box Squat / Pin Squat at Parallel",sets:"3",reps:"Phase-based",note:"POTENTIATION LIFT — VERTICAL FORCE. REST 4 FULL MINUTES before depth drops.",restSecs:240,hasWeight:true},
+        {name:"Depth Drop → Max Vertical Jump",sets:"4",reps:"3",note:"POTENTIATED. Step off 18–24\" box. Absorb fast. Explode max height.",restSecs:90},
+      ]},
+      {title:"PAP COMPLEX B — CLEAN → APPROACH JUMP",color:"#f97316",items:[
+        {name:"Power Clean / Hang Clean",sets:"4",reps:"3",note:"POTENTIATION LIFT. Triple extension. REST 4 FULL MINUTES after final set.",restSecs:240,hasWeight:true},
+        {name:"Max Approach Jump / Lowered Rim Dunk",sets:"5",reps:"3",note:"W1-4: 1-step. W5+: 2-3 step approach. W7+: lower the rim — practice full dunk.",restSecs:90},
+      ]},
+      {title:"STRENGTH BLOCK",color:"#ca8a04",items:[
+        {name:"Split Stance Trap Bar Extension",sets:"4",reps:"Phase-based",note:"Primary quad + posterior chain. Right leg first every set.",restSecs:180,hasWeight:true},
+        {name:"Barbell RDL",sets:"3",reps:"Phase-based",note:"Hip hinge. Hamstring eccentric. Phase-specific tempo.",restSecs:150,hasWeight:true},
+        {name:"Nordic Curl Negative",sets:"3",reps:"5",note:"Lower only. 4s down. Use hands to return.",restSecs:120},
+      ]},
+      {title:"FINISHER",color:"#71717a",items:[
+        {name:"Single Leg Calf Raise",sets:"3",reps:"12/side",note:"Off a step. Slow eccentric. Right leg priority.",restSecs:45},
+        {name:"Isometric Wall Sit",sets:"2",reps:"45s",note:"Provocative angle. Quad tendon pain inhibition. Every lower day.",restSecs:45},
+      ]},
+    ]
+  },
+  "Upper A":{
+    color:"#0ea5e9",icon:"💪",est:"35 min",
+    sections:[
+      {title:"WARM UP",color:"#71717a",items:[
+        {name:"Band Pull-Aparts",sets:"3",reps:"20",note:"Shoulder health. Every upper session.",restSecs:20},
+        {name:"Thoracic Rotations",sets:"2",reps:"8/side",note:"",restSecs:20},
+        {name:"Cat-Cow",sets:"2",reps:"10",note:"Lumbar prep.",restSecs:20},
+      ]},
+      {title:"PRIMARY STRENGTH",color:"#0ea5e9",items:[
+        {name:"Pendlay Row",sets:"5",reps:"Phase-based",note:"Every upper session. Forever. Opens back and pelvis.",restSecs:180,hasWeight:true},
+        {name:"Weighted Pull-Up",sets:"4",reps:"Phase-based",note:"Add weight when all reps clean.",restSecs:150,hasWeight:true},
+        {name:"Incline Dumbbell Press",sets:"4",reps:"Phase-based",note:"Shoulder-friendly. Primary chest builder.",restSecs:120,hasWeight:true},
+        {name:"Overhead Press",sets:"4",reps:"Phase-based",note:"Strict. No leg drive.",restSecs:120,hasWeight:true},
+      ]},
+      {title:"CORE + ACCESSORIES",color:"#0ea5e9",items:[
+        {name:"Pallof Press",sets:"3",reps:"10/side",note:"Anti-rotation core. Carryover to back pain and cutting.",restSecs:45},
+        {name:"Face Pulls",sets:"3",reps:"15",note:"Rotator cuff. Every upper session.",restSecs:45},
+        {name:"Curl + Pushdown superset",sets:"3",reps:"12 each",note:"One superset. In and out.",restSecs:45},
+      ]},
+    ]
+  },
+  "Lower B":{
+    color:"#f97316",icon:"🚀",est:"40 min",
+    sections:[
+      {title:"ACTIVATION + NEURAL PRIMING",color:"#71717a",items:[
+        {name:"World's Greatest Stretch",sets:"2",reps:"5/side",note:"Full lower body prime.",restSecs:30},
+        {name:"Isometric Squat Hold — Max Push",sets:"3",reps:"5s hold",note:"Motor unit priming. Every lower session.",restSecs:30},
+        {name:"Ankle Pogos",sets:"2",reps:"20s",note:"Every lower session.",restSecs:20},
+        {name:"Banded Ankle Pogos",sets:"2",reps:"20s",note:"Band behind hips. CNS recruitment above free pogos.",restSecs:20},
+      ]},
+      {title:"SPRINT BLOCK",color:"#dc2626",items:[
+        {name:"Sled Sprint 15m (W3+ only)",sets:"4",reps:"15m",note:"W1-2: acceleration starts. W3+: 10-15% bodyweight. 60m sled volume.",restSecs:90},
+        {name:"Free Acceleration Starts 20m",sets:"3",reps:"20m",note:"After sled. Overspeed effect. 60m free volume. Total ~120m.",restSecs:90},
+      ]},
+      {title:"PAP COMPLEX — ALTERNATING WEEKS",color:"#f97316",items:[
+        {name:"Trap Bar DL (odd) / Hip Thrust (even)",sets:"3",reps:"Phase-based",note:"Odd weeks: Trap Bar. Even weeks: Hip Thrust. Both horizontal force. REST 4 MIN after final set.",restSecs:240,hasWeight:true},
+        {name:"Box Jump — Max Height",sets:"4",reps:"3",note:"POTENTIATED. Track max height every week.",restSecs:90},
+        {name:"Broad Jump — Max Distance",sets:"4",reps:"3",note:"POTENTIATED. Measure and record distance every week.",restSecs:90},
+      ]},
+      {title:"STRENGTH BLOCK",color:"#f97316",items:[
+        {name:"Bulgarian Split Squat",sets:"3",reps:"Phase-based",note:"Right leg first. Add load when form locked.",restSecs:150,hasWeight:true},
+        {name:"Back Extension",sets:"3",reps:"12",note:"Every lower day. Opens your back and pelvis.",restSecs:90,hasWeight:true},
+        {name:"Single Leg Calf Raise",sets:"3",reps:"12/side",note:"Off a step. Right leg priority.",restSecs:45},
+      ]},
+      {title:"FINISHER",color:"#71717a",items:[
+        {name:"Isometric Wall Sit",sets:"2",reps:"45s",note:"Every lower day. Quad tendon inhibition.",restSecs:45},
+        {name:"90/90 Hip IR PNF",sets:"2",reps:"each side",note:"30s hold → 10s push → 30s deeper.",restSecs:30},
+      ]},
+    ]
+  },
+  "Upper B":{
+    color:"#16a34a",icon:"🏀",est:"35 min",
+    sections:[
+      {title:"WARM UP",color:"#71717a",items:[
+        {name:"Band Dislocates",sets:"2",reps:"10",note:"Shoulder mobility.",restSecs:20},
+        {name:"Scapular Push-Ups",sets:"2",reps:"10",note:"",restSecs:20},
+      ]},
+      {title:"PRIMARY STRENGTH",color:"#16a34a",items:[
+        {name:"Pendlay Row",sets:"5",reps:"Phase-based",note:"Every upper session. Every week.",restSecs:180,hasWeight:true},
+        {name:"Weighted Chin-Up",sets:"4",reps:"Phase-based",note:"Chin-up grip today.",restSecs:150,hasWeight:true},
+        {name:"Bench Press",sets:"4",reps:"Phase-based",note:"Progressive overload every session.",restSecs:150,hasWeight:true},
+        {name:"Single Arm Dumbbell Row",sets:"3",reps:"10/side",note:"Heavy. Full ROM.",restSecs:90,hasWeight:true},
+      ]},
+      {title:"ATHLETIC UPPER + CORE",color:"#16a34a",items:[
+        {name:"Med Ball Slam",sets:"4",reps:"5",note:"Full body explosive. Rate of force development. Max effort.",restSecs:60},
+        {name:"Face Pulls",sets:"3",reps:"15",note:"Rotator cuff. Every upper session.",restSecs:45},
+        {name:"Suitcase Carry",sets:"3",reps:"20m/side",note:"Heavy. Lateral core + pelvis stability.",restSecs:45,hasWeight:true},
+        {name:"Hammer Curl + Tricep superset",sets:"3",reps:"12 each",note:"One superset. Done.",restSecs:45},
+      ]},
+    ]
+  },
+};
+
+// ─── PROGRAM TAB ─────────────────────────────────────────────────────────────
+function ProgramTab({schedule,onScheduleChange,workouts,bbLog,checkIns}){
+  const [view,setView]=useState("schedule"); // schedule | workout | intensity | advice
+  const [selectedDate,setSelectedDate]=useState(today());
+  const [calendarMonth,setCalendarMonth]=useState(new Date());
+  const [activeWorkoutDay,setActiveWorkoutDay]=useState(null);
+  const [openSections,setOpenSections]=useState({});
+  const [weights,setWeights]=useState(()=>{try{return JSON.parse(localStorage.getItem("apex_prog_weights")||"{}");}catch{return{};}});
+  const [advice,setAdvice]=useState("");
+  const [adviceLoading,setAdviceLoading]=useState(false);
+  const [programWeek,setProgramWeek]=useState(1);
+
+  const todayStr=today();
+  const weekRow=INTENSITY_TABLE[programWeek-1]||INTENSITY_TABLE[0];
+
+  const saveWeight=(key,val)=>{
+    const updated={...weights,[key]:val};
+    setWeights(updated);
+    try{localStorage.setItem("apex_prog_weights",JSON.stringify(updated));}catch{}
+  };
+
+  const toggleSection=(key)=>setOpenSections(p=>({...p,[key]:!p[key]}));
+  const isSectionOpen=(key)=>openSections[key]!==false;
+
+  // Build calendar days for current month view
+  const buildCalendarDays=()=>{
+    const year=calendarMonth.getFullYear();
+    const month=calendarMonth.getMonth();
+    const firstDay=new Date(year,month,1).getDay();
+    const daysInMonth=new Date(year,month+1,0).getDate();
+    const days=[];
+    for(let i=0;i<firstDay;i++)days.push(null);
+    for(let i=1;i<=daysInMonth;i++){
+      const d=new Date(year,month,i);
+      days.push(d.toISOString().split("T")[0]);
+    }
+    return days;
+  };
+
+  // Check scheduling conflicts
+  const getConflicts=(sched)=>{
+    const warnings=[];
+    const dates=Object.keys(sched).sort();
+    dates.forEach(d=>{
+      const session=sched[d];
+      const nextDay=new Date(d);nextDay.setDate(nextDay.getDate()+1);
+      const nextStr=nextDay.toISOString().split("T")[0];
+      const nextSession=sched[nextStr];
+      if((session==="Pickup"||session==="Lower A"||session==="Lower B")&&(nextSession==="Lower A"||nextSession==="Lower B")){
+        warnings.push({date:d,msg:`${session} on ${fmtDate(d)} before ${nextSession} on ${fmtDate(nextStr)} — legs won't recover in time.`});
+      }
+      if(session==="Pickup"&&nextSession==="Lower A"){
+        warnings.push({date:d,msg:`Pickup on ${fmtDate(d)} directly before Lower A on ${fmtDate(nextStr)} — CNS won't be fresh for jumps.`});
+      }
+    });
+    // Check 3+ consecutive training days
+    dates.forEach((d,i)=>{
+      if(i<2)return;
+      const d1=dates[i-2],d2=dates[i-1],d3=d;
+      const gap1=new Date(d2)-new Date(d1),gap2=new Date(d3)-new Date(d2);
+      if(gap1===86400000&&gap2===86400000){
+        const s1=sched[d1],s2=sched[d2],s3=sched[d3];
+        if(s1!=="Rest"&&s2!=="Rest"&&s3!=="Rest"){
+          warnings.push({date:d,msg:`3 consecutive training days (${fmtDate(d1)}–${fmtDate(d3)}) — consider adding a rest day.`});
+        }
+      }
+    });
+    return warnings;
+  };
+
+  const conflicts=getConflicts(schedule);
+
+  // Get AI scheduling advice
+  const getAIAdvice=async()=>{
+    setAdviceLoading(true);
+    setAdvice("");
+    const recentWorkouts=workouts.slice(-5).map(w=>w.name||"Workout").join(", ")||"none";
+    const recentBall=bbLog.filter(b=>b.date>=daysAgo(7)).length;
+    const lastCheckIn=checkIns.sort((a,b)=>b.date.localeCompare(a.date))[0];
+    const schedEntries=Object.entries(schedule).filter(([d])=>d>=todayStr).slice(0,7);
+    const schedSummary=schedEntries.map(([d,s])=>`${fmtDate(d)}: ${s}`).join(", ")||"No sessions scheduled yet";
+    const conflictSummary=conflicts.length?conflicts.map(c=>c.msg).join(". "):"No conflicts detected";
+    const text=await callCoach(
+      `You are an elite athletic performance coach for Khayre Farah, a 29-year-old basketball player. He has post-ACL reconstruction (right knee), mild-moderate bilateral OA, and is following a 12-week triphasic program targeting a 40-inch vertical and dunking. He trains 4 days/week: Lower A (squat PAP + vertical), Upper A, Lower B (hip/pull PAP + horizontal), Upper B. He also plays pickup basketball 2-3x/week. Key rules: never schedule pickup or Lower directly before another Lower day. Max 3 consecutive training days. Monitor knee effusion. Be direct, specific, and concise — max 150 words.`,
+      [{role:"user",content:`Schedule this week: ${schedSummary}. Conflicts: ${conflictSummary}. Recent workouts: ${recentWorkouts}. Ball sessions this week: ${recentBall}. Last check-in — sleep: ${lastCheckIn?.sleep||"?"}h, energy: ${lastCheckIn?.energy||"?"}/5. Program week: ${programWeek} (${weekRow.phase} phase, ${weekRow.pct} 1RM). Give me specific scheduling advice and one training cue for today.`}],
+      250
+    );
+    setAdvice(text);
+    setAdviceLoading(false);
+  };
+
+  const calDays=buildCalendarDays();
+  const monthName=calendarMonth.toLocaleDateString("en-US",{month:"long",year:"numeric"});
+
+  // This week's schedule
+  const now=new Date();
+  const dow=now.getDay();
+  const weekDays=[];
+  for(let i=0;i<7;i++){
+    const d=new Date(now);d.setDate(now.getDate()-dow+i);
+    weekDays.push(d.toISOString().split("T")[0]);
+  }
+
+  return(
+    <div>
+      <STitle sub="12-Week Triphasic · PAP Potentiation">PROGRAM</STitle>
+
+      {/* Program week selector */}
+      <div style={{...S.card,padding:"12px 16px",marginBottom:12}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+          <span style={{...S.label,marginBottom:0}}>Program Week</span>
+          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            <button onClick={()=>setProgramWeek(w=>Math.max(1,w-1))} style={{...S.btn("#f4f4f5","#18181b"),padding:"4px 12px",fontSize:16,borderRadius:6,border:"1px solid #e4e4e7"}}>‹</button>
+            <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:weekRow.color,minWidth:28,textAlign:"center"}}>{programWeek}</span>
+            <button onClick={()=>setProgramWeek(w=>Math.min(12,w+1))} style={{...S.btn("#f4f4f5","#18181b"),padding:"4px 12px",fontSize:16,borderRadius:6,border:"1px solid #e4e4e7"}}>›</button>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+          <span style={{fontSize:12,fontWeight:700,color:weekRow.color,fontFamily:"'Barlow',sans-serif"}}>{weekRow.phase.toUpperCase()}</span>
+          <span style={{fontSize:12,color:"#71717a",fontFamily:"'Barlow',sans-serif"}}>{weekRow.pct} 1RM · {weekRow.reps} · Plyo: {weekRow.plyoPct}</span>
+        </div>
+        <div style={{fontSize:11,color:"#71717a",fontFamily:"'Barlow',sans-serif",marginTop:4}}>{weekRow.tempo}</div>
+      </div>
+
+      {/* View tabs */}
+      <div style={{display:"flex",gap:4,marginBottom:16,overflowX:"auto",paddingBottom:2}}>
+        {[["schedule","📅 Schedule"],["workout","💪 Workout"],["intensity","📊 Intensity"],["advice","🧠 AI Advice"]].map(([k,l])=>(
+          <button key={k} onClick={()=>setView(k)} style={{...S.btn(view===k?"#18181b":"#ffffff",view===k?"#ca8a04":"#71717a"),padding:"7px 14px",fontSize:12,borderRadius:8,border:`1px solid ${view===k?"#18181b":"#e4e4e7"}`,whiteSpace:"nowrap",fontFamily:"'Barlow',sans-serif",fontWeight:700,letterSpacing:.5}}>{l}</button>
+        ))}
+      </div>
+
+      {/* ── SCHEDULE VIEW ── */}
+      {view==="schedule"&&(
+        <div>
+          {/* Conflicts */}
+          {conflicts.length>0&&(
+            <div style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:10,padding:"10px 14px",marginBottom:12}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#dc2626",fontFamily:"'Barlow',sans-serif",marginBottom:6}}>⚠️ Scheduling Conflicts</div>
+              {conflicts.map((c,i)=>(
+                <div key={i} style={{fontSize:12,color:"#991b1b",fontFamily:"'Barlow',sans-serif",marginBottom:2}}>→ {c.msg}</div>
+              ))}
+            </div>
+          )}
+
+          {/* This Week Strip */}
+          <div style={{...S.card,padding:"14px 12px",marginBottom:12}}>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:1,marginBottom:10}}>THIS WEEK</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4}}>
+              {weekDays.map((d,i)=>{
+                const session=schedule[d];
+                const meta=session?SESSION_TYPES[session]:null;
+                const isToday=d===todayStr;
+                const isPast=d<todayStr;
+                const workoutLogged=workouts.some(w=>w.date===d)||bbLog.some(b=>b.date===d);
+                return(
+                  <div key={d} onClick={()=>{setSelectedDate(d);}}
+                    style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,cursor:"pointer"}}>
+                    <div style={{fontSize:9,fontFamily:"'Barlow',sans-serif",fontWeight:700,color:isToday?"#ca8a04":"#3f3f46",textTransform:"uppercase"}}>
+                      {["S","M","T","W","T","F","S"][i]}
+                    </div>
+                    <div style={{fontSize:9,fontFamily:"'Barlow',sans-serif",color:isToday?"#ca8a04":"#52525b"}}>
+                      {new Date(d+"T12:00:00").getDate()}
+                    </div>
+                    <div style={{width:"100%",minHeight:42,background:meta?meta.color+"15":isToday?"#ca8a0408":"#f9f9f9",border:`1px solid ${isToday?"#ca8a0433":meta?meta.color+"44":"#e4e4e7"}`,borderRadius:8,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:1,padding:"3px 1px",position:"relative"}}>
+                      {meta&&<span style={{fontSize:13}}>{meta.icon}</span>}
+                      {meta&&<span style={{fontSize:7,fontFamily:"'Barlow',sans-serif",fontWeight:700,color:meta.color,textAlign:"center",lineHeight:1.2,padding:"0 2px"}}>{session.split(" ")[0]}{session.split(" ")[1]?" "+session.split(" ")[1]:""}</span>}
+                      {!meta&&<div style={{width:4,height:4,borderRadius:"50%",background:"#e4e4e7"}}/>}
+                      {workoutLogged&&<div style={{position:"absolute",top:2,right:2,width:5,height:5,borderRadius:"50%",background:"#16a34a"}}/>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Month Calendar */}
+          <div style={{...S.card,padding:"14px 12px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+              <button onClick={()=>setCalendarMonth(m=>{const n=new Date(m);n.setMonth(n.getMonth()-1);return n;})} style={{...S.btn("#f4f4f5","#18181b"),padding:"4px 12px",fontSize:16,borderRadius:6,border:"1px solid #e4e4e7"}}>‹</button>
+              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:1}}>{monthName}</div>
+              <button onClick={()=>setCalendarMonth(m=>{const n=new Date(m);n.setMonth(n.getMonth()+1);return n;})} style={{...S.btn("#f4f4f5","#18181b"),padding:"4px 12px",fontSize:16,borderRadius:6,border:"1px solid #e4e4e7"}}>›</button>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginBottom:6}}>
+              {["S","M","T","W","T","F","S"].map((d,i)=>(
+                <div key={i} style={{textAlign:"center",fontSize:9,fontFamily:"'Barlow',sans-serif",fontWeight:700,color:"#71717a",paddingBottom:4}}>{d}</div>
+              ))}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2}}>
+              {calDays.map((d,i)=>{
+                if(!d)return <div key={i}/>;
+                const session=schedule[d];
+                const meta=session?SESSION_TYPES[session]:null;
+                const isToday=d===todayStr;
+                const isSelected=d===selectedDate;
+                const workoutLogged=workouts.some(w=>w.date===d)||bbLog.some(b=>b.date===d);
+                const hasConflict=conflicts.some(c=>c.date===d);
+                return(
+                  <div key={d} onClick={()=>setSelectedDate(d)}
+                    style={{aspectRatio:"1",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",borderRadius:8,cursor:"pointer",background:isSelected?"#18181b":meta?meta.color+"12":isToday?"#ca8a0410":"transparent",border:`1px solid ${isSelected?"#18181b":hasConflict?"#fca5a5":meta?meta.color+"33":isToday?"#ca8a0444":"transparent"}`,position:"relative",padding:2}}>
+                    <span style={{fontSize:10,fontFamily:"'Barlow',sans-serif",fontWeight:700,color:isSelected?"#ca8a04":isToday?"#ca8a04":"#52525b",lineHeight:1}}>{new Date(d+"T12:00:00").getDate()}</span>
+                    {meta&&<span style={{fontSize:9,lineHeight:1}}>{meta.icon}</span>}
+                    {workoutLogged&&<div style={{position:"absolute",top:2,right:2,width:4,height:4,borderRadius:"50%",background:"#16a34a"}}/>}
+                    {hasConflict&&<div style={{position:"absolute",bottom:2,left:"50%",transform:"translateX(-50%)",width:4,height:4,borderRadius:"50%",background:"#dc2626"}}/>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Selected Date Session Picker */}
+          {selectedDate&&(
+            <div style={{...S.card,marginTop:12}}>
+              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:1,marginBottom:10}}>
+                {fmtDate(selectedDate)} {selectedDate===todayStr?"— Today":""}
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                {Object.entries(SESSION_TYPES).map(([k,v])=>{
+                  const isActive=schedule[selectedDate]===k;
+                  return(
+                    <button key={k} onClick={()=>{const updated={...schedule,[selectedDate]:isActive?undefined:k};if(isActive)delete updated[selectedDate];onScheduleChange(updated);}}
+                      style={{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",background:isActive?v.color+"15":"#f9f9f9",border:`1px solid ${isActive?v.color:"#e4e4e7"}`,borderRadius:10,cursor:"pointer",textAlign:"left"}}>
+                      <span style={{fontSize:18}}>{v.icon}</span>
+                      <div>
+                        <div style={{fontSize:13,fontWeight:700,fontFamily:"'Barlow',sans-serif",color:isActive?v.color:"#18181b"}}>{k}</div>
+                        <div style={{fontSize:9,color:"#71717a",fontFamily:"'Barlow',sans-serif"}}>{v.tag}</div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              {schedule[selectedDate]&&["Lower A","Upper A","Lower B","Upper B"].includes(schedule[selectedDate])&&(
+                <button onClick={()=>{setActiveWorkoutDay(schedule[selectedDate]);setView("workout");}}
+                  style={{...S.btn("#18181b","#ca8a04"),width:"100%",marginTop:10,borderRadius:10,fontSize:15}}>
+                  VIEW {schedule[selectedDate].toUpperCase()} WORKOUT →
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── WORKOUT VIEW ── */}
+      {view==="workout"&&(
+        <div>
+          {/* Day selector */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:16}}>
+            {Object.keys(PROGRAM_DAYS).map(k=>{
+              const meta=PROGRAM_DAYS[k];
+              const isActive=activeWorkoutDay===k;
+              return(
+                <button key={k} onClick={()=>setActiveWorkoutDay(k)} style={{padding:"10px 4px",textAlign:"center",background:isActive?meta.color:"#ffffff",color:isActive?"#ffffff":"#71717a",border:`1px solid ${isActive?meta.color:"#e4e4e7"}`,borderRadius:8,cursor:"pointer",transition:"all .1s"}}>
+                  <div style={{fontSize:16}}>{meta.icon}</div>
+                  <div style={{fontSize:11,fontWeight:700,fontFamily:"'Barlow',sans-serif"}}>{k}</div>
+                  <div style={{fontSize:9,color:isActive?"rgba(255,255,255,.7)":"#a1a1aa",fontFamily:"'Barlow',sans-serif"}}>{meta.est}</div>
+                </button>
+              );
+            })}
+          </div>
+
+          {activeWorkoutDay&&(()=>{
+            const dayData=PROGRAM_DAYS[activeWorkoutDay];
+            return(
+              <div>
+                {/* Week info bar */}
+                <div style={{background:weekRow.color+"15",border:`1px solid ${weekRow.color}33`,borderRadius:10,padding:"10px 14px",marginBottom:12,display:"flex",gap:12,flexWrap:"wrap",alignItems:"center"}}>
+                  <div>
+                    <div style={{fontSize:9,color:weekRow.color,fontFamily:"'Barlow',sans-serif",fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>Week {programWeek} · {weekRow.phase}</div>
+                    <div style={{fontSize:13,fontWeight:700,fontFamily:"'Barlow',sans-serif"}}>{weekRow.pct} 1RM · {weekRow.reps}</div>
+                  </div>
+                  <div style={{borderLeft:"1px solid #e4e4e7",paddingLeft:12}}>
+                    <div style={{fontSize:9,color:"#71717a",fontFamily:"'Barlow',sans-serif",textTransform:"uppercase",letterSpacing:1}}>Tempo</div>
+                    <div style={{fontSize:11,color:"#52525b",fontFamily:"'Barlow',sans-serif"}}>{weekRow.tempo}</div>
+                  </div>
+                  <div style={{borderLeft:"1px solid #e4e4e7",paddingLeft:12}}>
+                    <div style={{fontSize:9,color:"#71717a",fontFamily:"'Barlow',sans-serif",textTransform:"uppercase",letterSpacing:1}}>Plyo</div>
+                    <div style={{fontSize:11,fontWeight:700,color:"#16a34a",fontFamily:"'Barlow',sans-serif"}}>{weekRow.plyoPct}</div>
+                  </div>
+                </div>
+
+                {dayData.sections.map((section,si)=>{
+                  const key=`${activeWorkoutDay}-${si}`;
+                  const open=isSectionOpen(key);
+                  return(
+                    <div key={si} style={{...S.card,padding:0,overflow:"hidden",marginBottom:8}}>
+                      <button onClick={()=>toggleSection(key)} style={{width:"100%",padding:"12px 16px",background:"transparent",border:"none",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",textAlign:"left"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8}}>
+                          <div style={{width:8,height:8,borderRadius:"50%",background:section.color,flexShrink:0}}/>
+                          <span style={{fontSize:11,fontWeight:700,fontFamily:"'Barlow',sans-serif",letterSpacing:1,color:"#18181b",textTransform:"uppercase"}}>{section.title}</span>
+                          <span style={{fontSize:10,color:section.color,background:section.color+"15",padding:"2px 8px",borderRadius:4,fontFamily:"'Barlow',sans-serif",fontWeight:700}}>{section.items.length} exercises</span>
+                        </div>
+                        <span style={{color:"#a1a1aa",fontSize:14,transform:open?"rotate(180deg)":"none",display:"inline-block",transition:"transform .15s"}}>▾</span>
+                      </button>
+
+                      {open&&(
+                        <div style={{borderTop:"1px solid #f4f4f5"}}>
+                          {section.items.map((item,ii)=>{
+                            const wKey=`${activeWorkoutDay}-w${programWeek}-${ii}-${si}`;
+                            const prevWKey=`${activeWorkoutDay}-w${programWeek-1}-${ii}-${si}`;
+                            const prevWeight=weights[prevWKey]||"";
+                            const currWeight=weights[wKey]||"";
+                            const suggested=prevWeight?(parseFloat(prevWeight)*1.025).toFixed(1):"";
+                            return(
+                              <div key={ii} style={{padding:"12px 16px",borderBottom:ii<section.items.length-1?"1px solid #f4f4f5":"none"}}>
+                                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:4}}>
+                                  <div style={{display:"flex",gap:8,alignItems:"flex-start",flex:1}}>
+                                    <div style={{minWidth:22,height:22,background:section.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:900,color:"#fff",borderRadius:4,flexShrink:0,marginTop:1,fontFamily:"'Barlow',sans-serif"}}>{ii+1}</div>
+                                    <div style={{flex:1}}>
+                                      <div style={{fontSize:14,fontWeight:700,fontFamily:"'Barlow',sans-serif",color:"#18181b",lineHeight:1.3}}>{item.name}</div>
+                                      {item.note&&<div style={{fontSize:11,color:"#71717a",fontFamily:"'Barlow',sans-serif",marginTop:3,lineHeight:1.5}}>{item.note}</div>}
+                                    </div>
+                                  </div>
+                                  <div style={{background:"#f4f4f5",border:`1px solid ${section.color}44`,borderRadius:6,padding:"4px 10px",textAlign:"center",flexShrink:0}}>
+                                    <div style={{fontSize:11,fontWeight:700,fontFamily:"'Barlow',sans-serif",color:section.color,whiteSpace:"nowrap"}}>{item.sets}×{item.reps}</div>
+                                    {item.restSecs>=60&&<div style={{fontSize:9,color:"#71717a",fontFamily:"'Barlow',sans-serif"}}>{Math.floor(item.restSecs/60)}min rest</div>}
+                                  </div>
+                                </div>
+                                {item.hasWeight&&(
+                                  <div style={{display:"flex",gap:8,alignItems:"center",marginTop:8,padding:"8px 10px",background:"#f9f9f9",borderRadius:8}}>
+                                    <span style={{fontSize:10,color:"#71717a",fontFamily:"'Barlow',sans-serif",fontWeight:700,whiteSpace:"nowrap"}}>W{programWeek} WEIGHT:</span>
+                                    <input type="number" placeholder="kg" value={currWeight} onChange={e=>saveWeight(wKey,e.target.value)}
+                                      style={{...S.input,width:70,padding:"4px 8px",fontSize:13,borderRadius:6}}/>
+                                    {prevWeight&&<span style={{fontSize:10,color:"#71717a",fontFamily:"'Barlow',sans-serif",whiteSpace:"nowrap"}}>Last: <b>{prevWeight}kg</b>{suggested&&<span style={{color:"#16a34a"}}> → try {suggested}kg</span>}</span>}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+          {!activeWorkoutDay&&(
+            <div style={{textAlign:"center",padding:40,color:"#71717a",fontFamily:"'Barlow',sans-serif"}}>Select a workout day above</div>
+          )}
+        </div>
+      )}
+
+      {/* ── INTENSITY TABLE VIEW ── */}
+      {view==="intensity"&&(
+        <div>
+          <div style={{...S.card,padding:"12px 16px",marginBottom:12,background:"#fffbeb",border:"1px solid #fef08a"}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#ca8a04",fontFamily:"'Barlow',sans-serif",marginBottom:4}}>HOW TO USE</div>
+            <div style={{fontSize:12,color:"#78716c",fontFamily:"'Barlow',sans-serif",lineHeight:1.6}}>Find your 1RM for each lift, multiply by the % shown for your current week. Don't know your 1RM? Use a 5-rep max × 1.15 as an estimate. PAP lifts always use 85–95% regardless of phase.</div>
+          </div>
+          <div style={{...S.card,padding:0,overflow:"hidden"}}>
+            <div style={{display:"grid",gridTemplateColumns:"36px 90px 54px 72px 1fr 52px",background:"#f4f4f5",padding:"8px 12px",gap:6}}>
+              {["WK","PHASE","%1RM","SETS","TEMPO","PLYO"].map(h=>(
+                <div key={h} style={{fontSize:9,fontWeight:700,color:"#71717a",fontFamily:"'Barlow',sans-serif",letterSpacing:1,textTransform:"uppercase"}}>{h}</div>
+              ))}
+            </div>
+            {INTENSITY_TABLE.map((row,i)=>(
+              <div key={i} style={{display:"grid",gridTemplateColumns:"36px 90px 54px 72px 1fr 52px",padding:"10px 12px",gap:6,borderTop:"1px solid #f4f4f5",background:row.week===programWeek?"#fffbeb":i%2===0?"#ffffff":"#fafafa",alignItems:"center"}}>
+                <div style={{fontSize:14,fontWeight:900,color:row.color,fontFamily:"'Bebas Neue',sans-serif"}}>{row.week}</div>
+                <div style={{fontSize:10,fontWeight:700,color:row.color,fontFamily:"'Barlow',sans-serif"}}>{row.phase}</div>
+                <div style={{fontSize:14,fontWeight:900,color:"#18181b",fontFamily:"'Barlow',sans-serif"}}>{row.pct}</div>
+                <div style={{fontSize:10,color:"#52525b",fontFamily:"'Barlow',sans-serif"}}>{row.reps}</div>
+                <div style={{fontSize:9,color:"#71717a",fontFamily:"'Barlow',sans-serif",lineHeight:1.4}}>{row.tempo}</div>
+                <div style={{fontSize:10,fontWeight:700,color:row.phase==="Deload"?"#7c3aed":"#16a34a",fontFamily:"'Barlow',sans-serif"}}>{row.plyoPct}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── AI ADVICE VIEW ── */}
+      {view==="advice"&&(
+        <div>
+          <div style={{...S.card,marginBottom:12}}>
+            <div style={{fontSize:13,color:"#52525b",fontFamily:"'Barlow',sans-serif",lineHeight:1.7,marginBottom:12}}>
+              AI advisor analyzes your schedule, recent sessions, check-ins, and program week to give you specific advice on what to do today and flag any recovery issues.
+            </div>
+            <button onClick={getAIAdvice} style={{...S.btn("#18181b","#ca8a04"),width:"100%",borderRadius:10,fontSize:15}} disabled={adviceLoading}>
+              {adviceLoading?"ANALYZING...":"GET SCHEDULING ADVICE →"}
+            </button>
+          </div>
+          {advice&&(
+            <div style={{...S.card,background:"#fffbeb",border:"1px solid #fef08a"}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#ca8a04",fontFamily:"'Barlow',sans-serif",marginBottom:8}}>🧠 AI COACH</div>
+              <div style={{fontSize:13,color:"#18181b",fontFamily:"'Barlow',sans-serif",lineHeight:1.8,whiteSpace:"pre-wrap"}}>{advice}</div>
+            </div>
+          )}
+          {/* Upcoming week preview */}
+          <div style={{...S.card,marginTop:12}}>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:1,marginBottom:10}}>NEXT 7 DAYS</div>
+            {weekDays.map(d=>{
+              const session=schedule[d];
+              const meta=session?SESSION_TYPES[session]:null;
+              const isToday=d===todayStr;
+              const workoutLogged=workouts.some(w=>w.date===d)||bbLog.some(b=>b.date===d);
+              const hasConflict=conflicts.some(c=>c.date===d);
+              return(
+                <div key={d} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:"1px solid #f4f4f5"}}>
+                  <div style={{minWidth:48,fontSize:11,fontFamily:"'Barlow',sans-serif",fontWeight:700,color:isToday?"#ca8a04":"#71717a"}}>{isToday?"TODAY":new Date(d+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"numeric",day:"numeric"})}</div>
+                  {meta?(
+                    <div style={{flex:1,display:"flex",alignItems:"center",gap:6}}>
+                      <span style={{fontSize:14}}>{meta.icon}</span>
+                      <div>
+                        <div style={{fontSize:12,fontWeight:700,fontFamily:"'Barlow',sans-serif",color:meta.color}}>{session}</div>
+                        <div style={{fontSize:9,color:"#71717a",fontFamily:"'Barlow',sans-serif"}}>{meta.tag}</div>
+                      </div>
+                    </div>
+                  ):(
+                    <div style={{flex:1,fontSize:12,color:"#a1a1aa",fontFamily:"'Barlow',sans-serif",fontStyle:"italic"}}>Not scheduled — tap Schedule to add</div>
+                  )}
+                  <div style={{display:"flex",gap:4,alignItems:"center"}}>
+                    {workoutLogged&&<span style={{fontSize:10,color:"#16a34a",fontFamily:"'Barlow',sans-serif",fontWeight:700}}>✓</span>}
+                    {hasConflict&&<span style={{fontSize:10,color:"#dc2626"}}>⚠</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function BottomNav({tab,setTab}){
   const [open,setOpen]=useState(false);
-  const PRIMARY=[{id:"DASHBOARD",icon:"⚡",label:"HOME"},{id:"COACH",icon:"🧠",label:"COACH"},{id:"LOG",icon:"✏️",label:"LOG"},{id:"BALL",icon:"🏀",label:"BALL"}];
+  const PRIMARY=[{id:"DASHBOARD",icon:"⚡",label:"HOME"},{id:"PROGRAM",icon:"📅",label:"PROGRAM"},{id:"COACH",icon:"🧠",label:"COACH"},{id:"LOG",icon:"✏️",label:"LOG"},{id:"BALL",icon:"🏀",label:"BALL"}];
   const MENU_SECTIONS=[
     {title:"Track",items:[{id:"CHECKIN",icon:"🌅",label:"Check-in"},{id:"BODY",icon:"⚖️",label:"Body"},{id:"PRS",icon:"🏆",label:"PRs"}]},
     {title:"Logs",items:[{id:"MONTHLY",icon:"📅",label:"Monthly"},{id:"GOALS",icon:"🎯",label:"Goals"},{id:"INJURY",icon:"🩹",label:"Health"}]},
@@ -1619,6 +2172,7 @@ export default function App(){
   const [prs,setPrs]=useState([]);
   const [injuries,setInjuries]=useState([]);
   const [programs,setPrograms]=useState([]);
+  const [schedule,setSchedule]=useState(()=>{try{return JSON.parse(localStorage.getItem("apex_schedule")||"{}");}catch{return{};}});
   const [loaded,setLoaded]=useState(false);
   const [sync,setSync]=useState("loading");
 
@@ -1645,6 +2199,11 @@ export default function App(){
     try{localStorage.setItem("apex_coach_chat",JSON.stringify(coachState.chat.slice(-100)));}catch{}
   },[coachState.chat,loaded]);
 
+  // Persist schedule
+  useEffect(()=>{
+    try{localStorage.setItem("apex_schedule",JSON.stringify(schedule));}catch{}
+  },[schedule]);
+
   useEffect(()=>{
     if(!loaded)return;
     setSync("syncing");
@@ -1662,6 +2221,7 @@ export default function App(){
     switch(tab){
       case "MONTHLY": return <MonthlyLog workouts={workouts} bbLog={bbLog} cardioLog={cardioLog} checkIns={checkIns}/>;
       case "DASHBOARD": return <Dashboard workouts={workouts} goals={goals} cardioLog={cardioLog} bbLog={bbLog} checkIns={checkIns} bodyLog={bodyLog} prs={prs} setTab={setTab}/>;
+      case "PROGRAM": return <ProgramTab schedule={schedule} onScheduleChange={setSchedule} workouts={workouts} bbLog={bbLog} checkIns={checkIns}/>;
       case "COACH": return <CoachTab workouts={workouts} cardioLog={cardioLog} bbLog={bbLog} goals={goals} checkIns={checkIns} injuries={injuries} prs={prs} coachState={coachState} setCoachState={setCoachState} setActiveWorkout={setActiveWorkout} setTab={setTab}/>;
       case "LOG": return <LogTab workouts={workouts} onSave={w=>setWorkouts(p=>[...p,w])} onDelete={id=>setWorkouts(p=>p.filter(w=>w.id!==id))} goals={goals} checkIns={checkIns} activeWorkout={activeWorkout} setActiveWorkout={setActiveWorkout} setTab={setTab}/>;
       case "CHECKIN": return <CheckInTab checkIns={checkIns} onSave={ci=>setCheckIns(p=>[...p.filter(c=>c.date!==ci.date),ci])}/>;
